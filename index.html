@@ -3,717 +3,1081 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Doc Highlighter — Highlight Google Docs Automatically</title>
+<title>Doc Highlighter — AI-Powered Google Docs Highlighter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root {
+    --bg: #f5f0e8;
+    --surface: #ffffff;
+    --border: #1a1a1a;
+    --text: #1a1a1a;
+    --muted: #555;
+    --gold: #e8c56d;
+    --gold-dark: #c9a83c;
+    --accent: #ff6b35;
+    --green: #4caf50;
+    --shadow: 5px 5px 0 #1a1a1a;
+    --shadow-gold: 5px 5px 0 #e8c56d;
+    --shadow-sm: 3px 3px 0 #1a1a1a;
+    --radius: 0px;
+    --font: 'Space Grotesk', sans-serif;
+    --mono: 'Space Mono', monospace;
+  }
 
-:root{
-  --bg:      #0a1520;
-  --surface: #0d1b2a;
-  --card:    #162135;
-  --border:  #2a3f5e;
-  --gold:    #c9a84c;
-  --gold-l:  #e8c56d;
-  --gold-dim:rgba(201,168,76,0.13);
-  --gold-glow:rgba(201,168,76,0.24);
-  --text:    #e8eaf0;
-  --muted:   #5a7a9a;
-  --red:     #e05c5c;
-  --radius:  14px;
-}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html{scroll-behavior:smooth}
-body{
-  background:var(--bg);color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  line-height:1.6;overflow-x:hidden;
-}
-body::before{
-  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(201,168,76,.07) 0%,transparent 70%);
-}
+  html { scroll-behavior: smooth; }
 
-/* ── NAV ────────────────────────────────────────────────────────── */
-nav{
-  position:fixed;top:0;left:0;right:0;z-index:100;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 36px;height:62px;
-  background:rgba(10,21,32,0.85);backdrop-filter:blur(20px);
-  border-bottom:1px solid var(--border);
-}
-.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:16px;font-weight:700;letter-spacing:-.3px}
-.nav-brand img{width:28px;height:28px;border-radius:50%;border:1px solid rgba(201,168,76,.3)}
-.nav-right{display:flex;align-items:center;gap:24px}
-.nav-right a{color:var(--muted);text-decoration:none;font-size:13px;transition:color .2s}
-.nav-right a:hover{color:var(--text)}
-.nav-dl{
-  background:linear-gradient(135deg,var(--gold),var(--gold-l));color:#0a1520;
-  text-decoration:none;font-size:13px;font-weight:700;
-  padding:8px 20px;border-radius:8px;
-  transition:opacity .2s,box-shadow .2s;
-}
-.nav-dl:hover{opacity:.88;box-shadow:0 0 20px var(--gold-glow)}
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
 
-/* ── HERO ───────────────────────────────────────────────────────── */
-.hero{
-  position:relative;z-index:1;min-height:100vh;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:120px 24px 80px;overflow:hidden;
-}
-.hero::after{
-  content:"";position:absolute;
-  width:800px;height:800px;
-  background:radial-gradient(circle,rgba(201,168,76,.09) 0%,transparent 65%);
-  top:50%;left:50%;transform:translate(-50%,-62%);
-  animation:pulse 7s ease-in-out infinite;pointer-events:none;
-}
-@keyframes pulse{0%,100%{transform:translate(-50%,-62%) scale(1);opacity:1}50%{transform:translate(-50%,-62%) scale(1.1);opacity:.55}}
-.hero-logo{
-  width:96px;height:96px;border-radius:50%;object-fit:cover;
-  margin-bottom:32px;
-  box-shadow:0 0 0 1px var(--border),0 0 56px var(--gold-dim);
-  animation:float 5s ease-in-out infinite;position:relative;z-index:1;
-  border:2px solid rgba(201,168,76,.35);
-}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-.hero h1{
-  font-size:clamp(42px,7vw,86px);font-weight:800;letter-spacing:-3px;line-height:1.0;
-  margin-bottom:22px;position:relative;z-index:1;
-}
-.hero h1 .grad{
-  background:linear-gradient(135deg,var(--gold) 0%,var(--gold-l) 60%,#f5e09a 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-}
-.hero-sub{
-  font-size:clamp(15px,2vw,19px);color:var(--muted);
-  max-width:520px;line-height:1.75;margin-bottom:40px;position:relative;z-index:1;
-}
-.hero-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1}
-.btn-primary{
-  background:linear-gradient(135deg,var(--gold),var(--gold-l));color:#0a1520;
-  text-decoration:none;font-size:15px;font-weight:700;
-  padding:14px 32px;border-radius:10px;
-  transition:opacity .2s,box-shadow .2s,transform .2s;
-  box-shadow:0 4px 24px var(--gold-glow);
-}
-.btn-primary:hover{opacity:.88;transform:translateY(-2px);box-shadow:0 8px 32px var(--gold-glow)}
-.btn-secondary{
-  background:transparent;color:var(--text);
-  text-decoration:none;font-size:15px;font-weight:600;
-  padding:14px 32px;border-radius:10px;border:1px solid var(--border);
-  transition:border-color .2s,background .2s,transform .2s;
-}
-.btn-secondary:hover{border-color:var(--gold);background:var(--gold-dim);transform:translateY(-2px)}
-.hero-note{margin-top:20px;font-size:12px;color:var(--muted);position:relative;z-index:1}
+  /* TICKER */
+  .ticker-wrap {
+    background: var(--gold);
+    border-bottom: 2px solid var(--border);
+    overflow: hidden;
+    padding: 10px 0;
+    white-space: nowrap;
+  }
+  .ticker-inner {
+    display: inline-flex;
+    gap: 0;
+    animation: ticker 20s linear infinite;
+  }
+  .ticker-item {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 0 24px;
+    text-transform: uppercase;
+  }
+  .ticker-item::after {
+    content: ' ★ ';
+    margin-left: 12px;
+  }
+  @keyframes ticker {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
 
-/* ── STATS BAR ──────────────────────────────────────────────────── */
-.stats-bar{
-  position:relative;z-index:1;
-  display:flex;justify-content:center;
-  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
-  background:var(--surface);
-}
-.stat-item{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  padding:24px 44px;border-right:1px solid var(--border);
-}
-.stat-item:last-child{border-right:none}
-.stat-num{font-size:32px;font-weight:800;letter-spacing:-1.5px;color:var(--gold-l);line-height:1}
-.stat-label{font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap}
-@media(max-width:640px){.stat-item{padding:18px 20px}.stat-num{font-size:26px}}
+  /* NAV */
+  nav {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .nav-logo img {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border);
+    object-fit: cover;
+  }
+  .nav-logo span {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    text-transform: uppercase;
+  }
+  .nav-links {
+    display: flex;
+    gap: 8px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--text);
+    padding: 6px 14px;
+    border: 2px solid transparent;
+    text-transform: uppercase;
+    transition: all 0.12s;
+  }
+  .nav-links a:hover {
+    border-color: var(--border);
+    background: var(--gold);
+    box-shadow: var(--shadow-sm);
+    transform: translate(-2px, -2px);
+  }
+  .nav-cta {
+    background: var(--text) !important;
+    color: var(--bg) !important;
+    border-color: var(--text) !important;
+  }
+  .nav-cta:hover {
+    background: var(--gold) !important;
+    color: var(--text) !important;
+  }
 
-/* ── MARQUEE ────────────────────────────────────────────────────── */
-.marquee-wrap{border-bottom:1px solid var(--border);overflow:hidden;padding:13px 0;position:relative;z-index:1}
-.marquee-track{display:flex;white-space:nowrap;animation:scroll-left 32s linear infinite}
-.marquee-track:hover{animation-play-state:paused}
-.marquee-item{
-  display:inline-flex;align-items:center;gap:10px;
-  font-size:11.5px;font-weight:600;color:var(--muted);
-  letter-spacing:.5px;text-transform:uppercase;padding:0 28px;
-}
-.marquee-item .dot{width:4px;height:4px;border-radius:50%;background:var(--gold);flex-shrink:0}
-@keyframes scroll-left{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  /* HERO */
+  .hero {
+    padding: 80px 40px 60px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: var(--gold);
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(42px, 6vw, 72px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .hero h1 span {
+    background: var(--gold);
+    padding: 0 4px;
+    display: inline;
+  }
+  .hero-sub {
+    font-size: 18px;
+    color: var(--muted);
+    margin-bottom: 36px;
+    line-height: 1.6;
+    max-width: 480px;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
 
-/* ── LIVE DEMO ──────────────────────────────────────────────────── */
-.demo-section{max-width:820px;margin:0 auto;padding:80px 24px;position:relative;z-index:1}
-.demo-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:20px;text-align:center}
-.demo-window{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:16px;overflow:hidden;
-  box-shadow:0 32px 80px rgba(0,0,0,.6),0 0 0 1px var(--border);
-}
-.demo-bar{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:11px 16px;background:var(--surface);border-bottom:1px solid var(--border);
-}
-.demo-dots{display:flex;gap:6px}
-.demo-dot{width:11px;height:11px;border-radius:50%}
-.demo-dot.r{background:#ff5f57}.demo-dot.y{background:#febc2e}.demo-dot.g{background:#28c840}
-.demo-chip{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--gold-l);background:var(--gold-dim);border:1px solid rgba(201,168,76,.2);padding:3px 9px;border-radius:5px}
-.demo-status{font-size:11px;color:var(--muted);font-family:"SF Mono",monospace}
+  /* BUTTONS */
+  .btn {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 12px 24px;
+    border: 2px solid var(--border);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.12s;
+    box-shadow: var(--shadow);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .btn:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 8px 8px 0 #1a1a1a;
+  }
+  .btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #1a1a1a;
+  }
+  .btn-primary {
+    background: var(--text);
+    color: var(--bg);
+  }
+  .btn-primary:hover {
+    background: var(--gold);
+    color: var(--text);
+  }
+  .btn-gold {
+    background: var(--gold);
+    color: var(--text);
+  }
+  .btn-gold:hover {
+    background: var(--gold-dark);
+  }
 
-.demo-body{display:grid;grid-template-columns:1fr 1fr;min-height:200px}
-.demo-queue{padding:16px;border-right:1px solid var(--border)}
-.demo-doc{padding:16px}
-.demo-pane-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  /* DEMO WINDOW */
+  .demo-window {
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .demo-titlebar {
+    background: var(--text);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .demo-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+  .demo-dot:nth-child(1) { background: #ff5f57; }
+  .demo-dot:nth-child(2) { background: #febc2e; }
+  .demo-dot:nth-child(3) { background: #28c840; }
+  .demo-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #aaa;
+    margin-left: 8px;
+    letter-spacing: 0.05em;
+  }
+  .demo-body {
+    padding: 24px;
+    background: #1e1e2e;
+    min-height: 280px;
+  }
+  .demo-doc {
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 2px;
+    padding: 20px 24px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: #333;
+    font-family: 'Georgia', serif;
+  }
+  .demo-doc p { margin-bottom: 8px; }
+  .hl-yellow { background: #ffeb3b; padding: 1px 3px; border-radius: 2px; }
+  .hl-green  { background: #a5d6a7; padding: 1px 3px; border-radius: 2px; }
+  .hl-blue   { background: #90caf9; padding: 1px 3px; border-radius: 2px; }
+  .hl-pink   { background: #f48fb1; padding: 1px 3px; border-radius: 2px; }
+  .cursor-blink {
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: #333;
+    margin-left: 1px;
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .demo-status {
+    background: #2a2a3e;
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid #333;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .status-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #7ecec4;
+  }
 
-.demo-queue-list{display:flex;flex-direction:column;gap:5px;min-height:130px}
-.dq-row{
-  display:flex;align-items:center;gap:8px;
-  background:rgba(10,21,32,.7);border:1px solid var(--border);
-  border-radius:7px;padding:6px 10px;
-  animation:slideIn .2s ease;
-  opacity:0;
-}
-.dq-row.visible{opacity:1}
-@keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.dq-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-.dq-tag{font-size:10px;font-weight:700;color:var(--gold-l);min-width:52px}
-.dq-text{font-size:11px;color:var(--text);font-family:"SF Mono",monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* STATS BAR */
+  .stats-bar {
+    border-top: 2px solid var(--border);
+    border-bottom: 2px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    divide: var(--border);
+  }
+  .stat-box {
+    flex: 1;
+    padding: 28px 20px;
+    text-align: center;
+    border-right: 2px solid var(--border);
+  }
+  .stat-box:last-child { border-right: none; }
+  .stat-num {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    display: block;
+  }
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-top: 6px;
+    display: block;
+  }
 
-.demo-doc-lines{display:flex;flex-direction:column;gap:8px;min-height:130px}
-.doc-line{height:14px;border-radius:7px;background:rgba(90,122,154,.15)}
-.doc-line.hl{transition:background .4s ease}
+  /* SECTIONS */
+  .section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 80px 40px;
+  }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 2px;
+    background: var(--gold);
+  }
+  .section-title {
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+    line-height: 1.05;
+  }
 
-.demo-foot{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 16px;background:var(--surface);border-top:1px solid var(--border);
-}
-.demo-prog-bg{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.demo-prog-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-l));width:0%;transition:width .5s cubic-bezier(.4,0,.2,1)}
-.demo-stat{font-family:"SF Mono",monospace;font-size:10px;color:var(--muted)}
+  /* FEATURES GRID */
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .feat-card {
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow);
+    background: var(--surface);
+    padding: 28px;
+    transition: all 0.12s;
+  }
+  .feat-card:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: 9px 9px 0 #1a1a1a;
+  }
+  .feat-icon {
+    font-size: 28px;
+    margin-bottom: 14px;
+    display: block;
+  }
+  .feat-name {
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.3px;
+    margin-bottom: 8px;
+  }
+  .feat-desc {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .feat-card.gold { background: var(--gold); }
+  .feat-card.dark { background: var(--text); color: var(--bg); }
+  .feat-card.dark .feat-desc { color: #aaa; }
 
-/* ── SECTIONS ───────────────────────────────────────────────────── */
-.section-wrap{max-width:1100px;margin:0 auto;padding:60px 24px 80px;position:relative;z-index:1}
-.section-tag{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
-.section-title{font-size:clamp(28px,4.5vw,48px);font-weight:800;letter-spacing:-1.5px;line-height:1.05}
-.section-desc{font-size:15px;color:var(--muted);margin-top:10px;max-width:520px;line-height:1.7}
-.reveal{opacity:0;transform:translateY(22px);transition:opacity .5s ease,transform .5s ease}
-.reveal.on{opacity:1;transform:none}
+  /* COLORS SECTION */
+  .color-strips {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+  .color-strip {
+    flex: 1;
+    min-width: 120px;
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: all 0.12s;
+  }
+  .color-strip:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: var(--shadow);
+  }
+  .color-swatch {
+    height: 80px;
+  }
+  .color-info {
+    padding: 10px 12px;
+    background: var(--surface);
+    border-top: 2px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
 
-/* ── BENTO ──────────────────────────────────────────────────────── */
-.bento-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:36px}
-.bento-card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:var(--radius);padding:28px;
-  transition:border-color .25s,transform .2s;
-}
-.bento-card:hover{border-color:rgba(201,168,76,.35);transform:translateY(-2px)}
-.bento-card.wide{grid-column:span 4}
-.bento-card.slim{grid-column:span 2}
-.bento-card.half{grid-column:span 3}
-.bento-card.third{grid-column:span 2}
-@media(max-width:860px){
-  .bento-card.wide,.bento-card.slim,.bento-card.half,.bento-card.third{grid-column:span 6}
-}
-.bento-icon{font-size:28px;margin-bottom:14px}
-.bento-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
-.bento-card p{font-size:13px;color:var(--muted);line-height:1.65}
-.bento-card.accent{background:var(--gold-dim);border-color:rgba(201,168,76,.2)}
-.bento-card.accent h3{color:var(--gold-l)}
-.bento-big-num{font-size:52px;font-weight:900;letter-spacing:-3px;color:var(--gold-l);line-height:1;margin-bottom:8px}
-.bento-big-label{font-size:12.5px;color:var(--muted)}
+  /* INSTALL STEPS */
+  .steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    counter-reset: step;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 20px;
+    align-items: start;
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow);
+    background: var(--surface);
+    padding: 24px;
+    transition: all 0.12s;
+  }
+  .step:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 8px 8px 0 #1a1a1a;
+  }
+  .step-num {
+    width: 56px;
+    height: 56px;
+    background: var(--gold);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    font-family: var(--mono);
+    flex-shrink: 0;
+  }
+  .step-content h3 {
+    font-size: 17px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+  .step-content p {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .code-block {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 12px 16px;
+    border: 2px solid var(--border);
+    overflow-x: auto;
+    position: relative;
+    line-height: 1.6;
+  }
+  .code-block .comment { color: #6c7086; }
+  .code-block .cmd { color: #89dceb; }
+  .code-block .str { color: #a6e3a1; }
 
-/* color swatches row */
-.color-row{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap}
-.color-swatch{
-  width:26px;height:26px;border-radius:6px;
-  border:1px solid rgba(255,255,255,.1);
-  transition:transform .15s;cursor:default;
-}
-.color-swatch:hover{transform:scale(1.15)}
+  /* COPY BUTTON */
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--gold);
+    border: 2px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 #1a1a1a;
+    transition: all 0.1s;
+    color: var(--text);
+  }
+  .copy-btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #1a1a1a;
+  }
+  .copy-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 #1a1a1a;
+  }
 
-/* ── INSTALL ────────────────────────────────────────────────────── */
-.divider{border:none;border-top:1px solid var(--border);position:relative;z-index:1}
-.install-steps{margin-top:36px;display:flex;flex-direction:column;gap:12px}
-.step{
-  display:flex;gap:20px;align-items:flex-start;
-  background:var(--card);border:1px solid var(--border);
-  border-radius:var(--radius);padding:24px 28px;
-}
-.step-num{
-  width:30px;height:30px;border-radius:50%;
-  background:var(--gold-dim);border:1px solid rgba(201,168,76,.25);
-  color:var(--gold-l);font-size:13px;font-weight:800;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;
-}
-.step-body{flex:1}
-.step-body h4{font-size:15px;font-weight:700;margin-bottom:12px}
-.code-wrap{position:relative}
-.code-block{
-  background:var(--surface);border:1px solid var(--border);border-radius:9px;
-  padding:12px 46px 12px 16px;
-  font-family:"SF Mono","Fira Code",monospace;font-size:12.5px;color:#b8d4f0;
-  overflow-x:auto;white-space:pre;
-}
-.copy-btn{
-  position:absolute;top:50%;right:8px;transform:translateY(-50%);
-  background:var(--border);border:none;border-radius:5px;
-  color:var(--muted);font-size:10px;font-weight:700;padding:3px 9px;
-  cursor:pointer;transition:background .15s,color .15s;font-family:inherit;
-}
-.copy-btn:hover,.copy-btn.ok{background:var(--gold-dim);color:var(--gold-l)}
+  /* CLAUDE SECTION */
+  .claude-block {
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow);
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    overflow: hidden;
+  }
+  .claude-left {
+    background: var(--gold);
+    padding: 40px 32px;
+    border-right: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .claude-left .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+    background: var(--text);
+    color: var(--bg);
+    padding: 3px 10px;
+    display: inline-block;
+  }
+  .claude-left h2 {
+    font-size: 30px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .claude-left p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #555;
+  }
+  .claude-right {
+    background: #1e1e2e;
+    padding: 32px;
+  }
+  .endpoint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .endpoint {
+    border: 2px solid #313244;
+    padding: 16px;
+    transition: border-color 0.12s;
+  }
+  .endpoint:hover { border-color: var(--gold); }
+  .endpoint-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .method {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: var(--gold);
+    color: var(--text);
+    border: 1px solid var(--gold-dark);
+    letter-spacing: 0.05em;
+  }
+  .method.get { background: #a6e3a1; border-color: #4caf50; }
+  .endpoint-path {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #89dceb;
+  }
+  .endpoint-desc {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #6c7086;
+  }
 
-/* ── CLAUDE SECTION ─────────────────────────────────────────────── */
-.claude-inner{
-  background:#0e1a28;border:1px solid rgba(201,168,76,.15);
-  border-radius:20px;padding:56px;
-  display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;
-}
-@media(max-width:760px){.claude-inner{grid-template-columns:1fr;padding:32px 24px;gap:32px}}
-.claude-inner h2{font-size:clamp(24px,3.5vw,38px);font-weight:800;letter-spacing:-1.5px;margin-bottom:14px;line-height:1.1}
-.claude-inner h2 span{color:var(--gold-l)}
-.claude-inner p{font-size:15px;color:var(--muted);margin-bottom:28px;line-height:1.75}
-.code-stack{display:flex;flex-direction:column;gap:16px}
-.code-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  /* CTA SECTION */
+  .cta-section {
+    background: var(--text);
+    border-top: 2px solid var(--border);
+    border-bottom: 2px solid var(--border);
+    padding: 80px 40px;
+    text-align: center;
+  }
+  .cta-section h2 {
+    font-size: clamp(32px, 5vw, 60px);
+    font-weight: 800;
+    color: var(--bg);
+    text-transform: uppercase;
+    letter-spacing: -2px;
+    margin-bottom: 8px;
+    line-height: 1.05;
+  }
+  .cta-section h2 span {
+    color: var(--gold);
+  }
+  .cta-section p {
+    font-size: 16px;
+    color: #888;
+    margin-bottom: 32px;
+    font-family: var(--mono);
+  }
 
-/* ── CTA ────────────────────────────────────────────────────────── */
-.cta{text-align:center;padding:100px 24px;border-top:1px solid var(--border);position:relative;z-index:1}
-.cta h2{font-size:clamp(32px,5.5vw,64px);font-weight:800;letter-spacing:-2.5px;line-height:1.0;margin-bottom:16px}
-.cta h2 .grad{background:linear-gradient(135deg,var(--gold),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.cta p{font-size:15px;color:var(--muted);margin-bottom:36px}
-.cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.cta-note{margin-top:18px;font-size:12px;color:var(--muted)}
+  /* FOOTER */
+  footer {
+    background: var(--surface);
+    border-top: 2px solid var(--border);
+    padding: 32px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: -0.3px;
+  }
+  .footer-logo img {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--border);
+    object-fit: cover;
+  }
+  .footer-links {
+    display: flex;
+    gap: 20px;
+  }
+  .footer-links a {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    transition: color 0.12s;
+  }
+  .footer-links a:hover { color: var(--text); }
+  .footer-copy {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
 
-/* ── FOOTER ─────────────────────────────────────────────────────── */
-footer{
-  border-top:1px solid var(--border);padding:36px 40px;
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
-  position:relative;z-index:1;
-}
-.footer-brand{display:flex;align-items:center;gap:9px;text-decoration:none;font-size:14px;font-weight:700;color:var(--text)}
-.footer-brand img{width:22px;height:22px;border-radius:50%;border:1px solid rgba(201,168,76,.3)}
-.footer-r{font-size:12px;color:var(--muted)}
-.footer-r a{color:var(--gold-l);text-decoration:none}
-.footer-r a:hover{text-decoration:underline}
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 2px solid var(--border);
+    margin: 0;
+  }
 
-::-webkit-scrollbar{width:5px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; gap: 40px; padding: 48px 24px; }
+    .feat-grid { grid-template-columns: 1fr 1fr; }
+    .claude-block { grid-template-columns: 1fr; }
+    .claude-left { border-right: none; border-bottom: 2px solid var(--border); }
+    nav { padding: 14px 24px; }
+    .nav-links { display: none; }
+    .section { padding: 60px 24px; }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+    .stats-bar { flex-wrap: wrap; }
+    .stat-box { min-width: 50%; }
+  }
+  @media (max-width: 600px) {
+    .feat-grid { grid-template-columns: 1fr; }
+    .hero h1 { letter-spacing: -1px; }
+    .step { grid-template-columns: 1fr; }
+    .step-num { width: 44px; height: 44px; font-size: 18px; }
+  }
 </style>
 </head>
 <body>
 
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-inner" id="ticker">
+    <span class="ticker-item">Doc Highlighter</span>
+    <span class="ticker-item">AI-Powered</span>
+    <span class="ticker-item">Google Docs</span>
+    <span class="ticker-item">Auto Highlight</span>
+    <span class="ticker-item">Claude Code Ready</span>
+    <span class="ticker-item">Free &amp; Open Source</span>
+    <span class="ticker-item">Doc Highlighter</span>
+    <span class="ticker-item">AI-Powered</span>
+    <span class="ticker-item">Google Docs</span>
+    <span class="ticker-item">Auto Highlight</span>
+    <span class="ticker-item">Claude Code Ready</span>
+    <span class="ticker-item">Free &amp; Open Source</span>
+  </div>
+</div>
+
 <!-- NAV -->
 <nav>
-  <a class="nav-brand" href="#">
-    <img src="Gemini_Generated_Image_s2bwlos2bwlos2bw.png" alt=""/>
-    Doc Highlighter
+  <a href="#" class="nav-logo">
+    <img src="Gemini_Generated_Image_s2bwlos2bwlos2bw.png" alt="Doc Highlighter icon"/>
+    <span>Doc Highlighter</span>
   </a>
-  <div class="nav-right">
-    <a href="#features">Features</a>
-    <a href="#install">Install</a>
-    <a href="#claude">Claude</a>
-    <a class="nav-dl" href="https://github.com/AadithKK/doc-highlighter" target="_blank">Download ↗</a>
-  </div>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#install">Install</a></li>
+    <li><a href="#api">API</a></li>
+    <li><a href="https://github.com/AadithKK/doc-highlighter" class="nav-cta">GitHub →</a></li>
+  </ul>
 </nav>
 
 <!-- HERO -->
-<div class="hero">
-  <img class="hero-logo" src="Gemini_Generated_Image_s2bwlos2bwlos2bw.png" alt="Doc Highlighter"/>
-  <h1>Highlight Docs.<br/><span class="grad">Automatically.</span></h1>
-  <p class="hero-sub">Queue up words and phrases, calibrate once, and let Doc Highlighter colour every match in your Google Doc — hands-free.</p>
-  <div class="hero-btns">
-    <a class="btn-primary" href="https://github.com/AadithKK/doc-highlighter" target="_blank">Download Free</a>
-    <a class="btn-secondary" href="https://github.com/AadithKK/doc-highlighter" target="_blank">View on GitHub ↗</a>
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">v1.0 — Now with Claude Code API</div>
+    <h1>
+      Auto-<span>Highlight</span><br/>
+      Your Google<br/>
+      Docs
+    </h1>
+    <p class="hero-sub">
+      A desktop app that finds text in your Google Doc and highlights it — automatically.
+      Control it via Claude Code, curl, or the built-in GUI.
+    </p>
+    <div class="hero-actions">
+      <a href="https://github.com/AadithKK/doc-highlighter" class="btn btn-primary">Download Free →</a>
+      <a href="#install" class="btn btn-gold">Quick Start</a>
+    </div>
   </div>
-  <p class="hero-note">Windows &nbsp;·&nbsp; Python 3.9+ &nbsp;·&nbsp; Free &amp; open source</p>
-</div>
+  <div>
+    <div class="demo-window">
+      <div class="demo-titlebar">
+        <div class="demo-dot"></div>
+        <div class="demo-dot"></div>
+        <div class="demo-dot"></div>
+        <span class="demo-title">doc_highlighter.py — Running</span>
+      </div>
+      <div class="demo-body">
+        <div class="demo-doc">
+          <p>The <span class="hl-yellow">neural network</span> learns patterns by adjusting its weights during training.</p>
+          <p>Researchers at <span class="hl-blue">Stanford University</span> published findings on <span class="hl-green">transformer architecture</span> improvements.</p>
+          <p>The model achieved <span class="hl-pink">94.7% accuracy</span> on the benchmark dataset.<span class="cursor-blink"></span></p>
+          <p style="margin-top:12px; color:#aaa; font-size:12px; font-family:monospace;">
+            ✓ neural network — Yellow<br/>
+            ✓ Stanford University — Blue<br/>
+            ✓ transformer architecture — Green<br/>
+            ✓ 94.7% accuracy — Pink
+          </p>
+        </div>
+      </div>
+      <div class="demo-status">
+        <div class="status-dot"></div>
+        <span class="status-text">HTTP server active · port 7798 · 4 highlights queued</span>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- STATS BAR -->
 <div class="stats-bar">
-  <div class="stat-item">
-    <span class="stat-num" data-target="8">0</span>
-    <span class="stat-label">Highlight colours</span>
+  <div class="stat-box">
+    <span class="stat-num">7</span>
+    <span class="stat-label">Color Options</span>
   </div>
-  <div class="stat-item">
-    <span class="stat-num" data-target="5">0</span>
-    <span class="stat-label">Second calibration</span>
+  <div class="stat-box">
+    <span class="stat-num">7798</span>
+    <span class="stat-label">HTTP API Port</span>
   </div>
-  <div class="stat-item">
-    <span class="stat-num">∞</span>
-    <span class="stat-label">Words per queue</span>
+  <div class="stat-box">
+    <span class="stat-num">5</span>
+    <span class="stat-label">API Endpoints</span>
   </div>
-  <div class="stat-item">
-    <span class="stat-num">∞</span>
-    <span class="stat-label">Free forever</span>
-  </div>
-</div>
-
-<!-- MARQUEE -->
-<div class="marquee-wrap">
-  <div class="marquee-track">
-    <span class="marquee-item"><span class="dot"></span>8 Highlight Colours</span>
-    <span class="marquee-item"><span class="dot"></span>Batch Import</span>
-    <span class="marquee-item"><span class="dot"></span>5-Second Calibration</span>
-    <span class="marquee-item"><span class="dot"></span>Countdown Timer</span>
-    <span class="marquee-item"><span class="dot"></span>Failsafe Mode</span>
-    <span class="marquee-item"><span class="dot"></span>Claude Integration</span>
-    <span class="marquee-item"><span class="dot"></span>Progress Tracking</span>
-    <span class="marquee-item"><span class="dot"></span>Delay Control</span>
-    <span class="marquee-item"><span class="dot"></span>Queue Management</span>
-    <span class="marquee-item"><span class="dot"></span>One-Click Start</span>
-    <span class="marquee-item"><span class="dot"></span>Google Docs</span>
-    <span class="marquee-item"><span class="dot"></span>Free Forever</span>
-    <span class="marquee-item"><span class="dot"></span>8 Highlight Colours</span>
-    <span class="marquee-item"><span class="dot"></span>Batch Import</span>
-    <span class="marquee-item"><span class="dot"></span>5-Second Calibration</span>
-    <span class="marquee-item"><span class="dot"></span>Countdown Timer</span>
-    <span class="marquee-item"><span class="dot"></span>Failsafe Mode</span>
-    <span class="marquee-item"><span class="dot"></span>Claude Integration</span>
-    <span class="marquee-item"><span class="dot"></span>Progress Tracking</span>
-    <span class="marquee-item"><span class="dot"></span>Delay Control</span>
-    <span class="marquee-item"><span class="dot"></span>Queue Management</span>
-    <span class="marquee-item"><span class="dot"></span>One-Click Start</span>
-    <span class="marquee-item"><span class="dot"></span>Google Docs</span>
-    <span class="marquee-item"><span class="dot"></span>Free Forever</span>
+  <div class="stat-box">
+    <span class="stat-num">0</span>
+    <span class="stat-label">Subscriptions</span>
   </div>
 </div>
 
-<!-- LIVE DEMO -->
-<div class="demo-section reveal">
-  <div class="demo-eyebrow">Watch it work</div>
-  <div class="demo-window">
-    <div class="demo-bar">
-      <div class="demo-dots">
-        <div class="demo-dot r"></div>
-        <div class="demo-dot y"></div>
-        <div class="demo-dot g"></div>
-      </div>
-      <span class="demo-chip" id="demo-label">Highlight Queue</span>
-      <span class="demo-status" id="demo-status">Ready</span>
-    </div>
-    <div class="demo-body">
-      <div class="demo-queue">
-        <div class="demo-pane-title">Queue</div>
-        <div class="demo-queue-list" id="demo-queue"></div>
-      </div>
-      <div class="demo-doc">
-        <div class="demo-pane-title">Google Doc</div>
-        <div class="demo-doc-lines" id="demo-doc">
-          <div class="doc-line" style="width:90%"  data-word="0"></div>
-          <div class="doc-line" style="width:70%"  data-word="1"></div>
-          <div class="doc-line" style="width:82%"  data-word="2"></div>
-          <div class="doc-line" style="width:55%"  data-word="3"></div>
-          <div class="doc-line" style="width:88%"  data-word="4"></div>
-          <div class="doc-line" style="width:65%"  data-word="5"></div>
-          <div class="doc-line" style="width:76%"  data-word="6"></div>
-          <div class="doc-line" style="width:48%"  data-word="7"></div>
-        </div>
-      </div>
-    </div>
-    <div class="demo-foot">
-      <div class="demo-prog-bg"><div class="demo-prog-fill" id="demo-prog"></div></div>
-      <span class="demo-stat" id="demo-stat">Idle</span>
-    </div>
-  </div>
-</div>
+<hr class="divider"/>
 
 <!-- FEATURES -->
-<div class="section-wrap" id="features">
-  <div class="reveal">
-    <div class="section-tag">Features</div>
-    <h2 class="section-title">Set it up once.<br/>Highlight <em style="font-style:normal;color:var(--gold-l)">everything.</em></h2>
-    <p class="section-desc">Build your queue, press start, and watch every word light up — no clicking required.</p>
+<section class="section" id="features">
+  <div class="section-label">What it does</div>
+  <div class="section-title">Ruthlessly<br/>Effective Features</div>
+  <div class="feat-grid">
+    <div class="feat-card gold">
+      <span class="feat-icon">⚡</span>
+      <div class="feat-name">Instant Highlighting</div>
+      <div class="feat-desc">Pyautogui-powered keyboard automation that finds and highlights text in milliseconds — no browser extension needed.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🎨</span>
+      <div class="feat-name">7 Highlight Colors</div>
+      <div class="feat-desc">Yellow, Blue, Green, Pink, Red, Purple, Teal — set per-entry via the <code style="font-family:var(--mono);font-size:12px">text::Color</code> syntax.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🤖</span>
+      <div class="feat-name">Claude Code API</div>
+      <div class="feat-desc">Built-in HTTP server on port 7798. Control the app from Claude Code, scripts, or any HTTP client without touching the GUI.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">📦</span>
+      <div class="feat-name">Batch Import</div>
+      <div class="feat-desc">Paste dozens of terms at once. Each line becomes a highlighted entry. Import via the UI or the <code style="font-family:var(--mono);font-size:12px">/batch</code> endpoint.</div>
+    </div>
+    <div class="feat-card dark">
+      <span class="feat-icon">🔒</span>
+      <div class="feat-name">Runs Locally</div>
+      <div class="feat-desc">Zero cloud, zero telemetry. The app runs entirely on your machine — your documents stay private.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🔄</span>
+      <div class="feat-name">Auto-Restart</div>
+      <div class="feat-desc">Stop and restart the queue without relaunching. Adjust delay, switch docs, re-run — all from the settings panel.</div>
+    </div>
   </div>
-  <div class="bento-grid reveal">
+</section>
 
-    <div class="bento-card wide">
-      <div class="bento-icon">🎨</div>
-      <h3>8 highlight colours</h3>
-      <p>Yellow, Green, Blue, Red, Purple, Orange, Teal, and Pink — each calibrated to a swatch in the Google Docs colour palette. Mix colours freely across your queue.</p>
-      <div class="color-row">
-        <div class="color-swatch" style="background:#FFFF00" title="Yellow"></div>
-        <div class="color-swatch" style="background:#00FF00" title="Green"></div>
-        <div class="color-swatch" style="background:#6fa8dc" title="Blue"></div>
-        <div class="color-swatch" style="background:#FF6666" title="Red"></div>
-        <div class="color-swatch" style="background:#c27ba0" title="Purple"></div>
-        <div class="color-swatch" style="background:#FFB347" title="Orange"></div>
-        <div class="color-swatch" style="background:#76d7c4" title="Teal"></div>
-        <div class="color-swatch" style="background:#f48fb1" title="Pink"></div>
-      </div>
-    </div>
-    <div class="bento-card slim accent">
-      <div class="bento-big-num">8</div>
-      <div class="bento-big-label">highlight colours</div>
-    </div>
+<hr class="divider"/>
 
-    <div class="bento-card half">
-      <div class="bento-icon">📋</div>
-      <h3>Batch import</h3>
-      <p>Paste a block of text — one entry per line. Assign colours inline with the <code style="background:rgba(10,21,32,.7);padding:1px 5px;border-radius:4px;font-size:11px">word::Color</code> syntax. Import dozens of terms in one shot.</p>
+<!-- COLORS -->
+<section class="section">
+  <div class="section-label">Highlight Colors</div>
+  <div class="section-title">Seven Colors,<br/>Your Choice</div>
+  <p style="color:var(--muted);font-size:15px;max-width:600px;">Use the <code style="font-family:var(--mono);background:#eee;padding:2px 6px;border:1px solid #ccc">text::Color</code> syntax per line, or set a default color for the whole batch.</p>
+  <div class="color-strips">
+    <div class="color-strip">
+      <div class="color-swatch" style="background:#ffeb3b;"></div>
+      <div class="color-info">Yellow</div>
     </div>
-    <div class="bento-card half">
-      <div class="bento-icon">🎯</div>
-      <h3>5-second calibration</h3>
-      <p>Click Capture, hover over each colour swatch in Google Docs, and the coordinates are saved. Do it once — works every session at that zoom level.</p>
+    <div class="color-strip">
+      <div class="color-swatch" style="background:#90caf9;"></div>
+      <div class="color-info">Blue</div>
     </div>
-
-    <div class="bento-card third">
-      <div class="bento-icon">⏱️</div>
-      <h3>Countdown timer</h3>
-      <p>3, 5, 10, or 15 seconds to switch back to your doc before automation begins.</p>
+    <div class="color-strip">
+      <div class="color-swatch" style="background:#a5d6a7;"></div>
+      <div class="color-info">Green</div>
     </div>
-    <div class="bento-card third">
-      <div class="bento-icon">🛡️</div>
-      <h3>Failsafe</h3>
-      <p>Move the mouse to the top-left corner at any time to instantly abort. No keyboard needed.</p>
+    <div class="color-strip">
+      <div class="color-swatch" style="background:#f48fb1;"></div>
+      <div class="color-info">Pink</div>
     </div>
-    <div class="bento-card third">
-      <div class="bento-icon">📊</div>
-      <h3>Progress bar</h3>
-      <p>Live count of entries processed with a smooth progress bar and status label.</p>
+    <div class="color-strip">
+      <div class="color-swatch" style="background:#ef9a9a;"></div>
+      <div class="color-info">Red</div>
     </div>
-
-    <div class="bento-card slim accent">
-      <div class="bento-big-num">∞</div>
-      <div class="bento-big-label">Free forever</div>
+    <div class="color-strip">
+      <div class="color-swatch" style="background:#ce93d8;"></div>
+      <div class="color-info">Purple</div>
     </div>
-    <div class="bento-card wide">
-      <div class="bento-icon">⚡</div>
-      <h3>Adjustable delay</h3>
-      <p>Slide from 0.2s to 2.0s between actions. Bump it up on slower connections so Google Docs has time to register each highlight before the next word is searched.</p>
+    <div class="color-strip">
+      <div class="color-swatch" style="background:#80cbc4;"></div>
+      <div class="color-info">Teal</div>
     </div>
-
   </div>
-</div>
+</section>
+
+<hr class="divider"/>
 
 <!-- INSTALL -->
-<hr class="divider"/>
-<div class="section-wrap" id="install">
-  <div class="reveal">
-    <div class="section-tag">Installation</div>
-    <h2 class="section-title">Running in under a minute.</h2>
-    <p class="section-desc">Three commands. No config files, no accounts.</p>
+<section class="section" id="install">
+  <div class="section-label">Get Started</div>
+  <div class="section-title">Up and Running<br/>in Minutes</div>
+  <div class="steps-list">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-content">
+        <h3>Clone the Repo</h3>
+        <p>Grab the source from GitHub and enter the project directory.</p>
+        <div class="code-block" style="position:relative">
+          <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+          <span class="cmd">git clone https://github.com/AadithKK/doc-highlighter.git</span><br/>
+          <span class="cmd">cd doc-highlighter</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-content">
+        <h3>Install Dependencies</h3>
+        <p>All Python packages needed for the GUI, automation, and HTTP server.</p>
+        <div class="code-block" style="position:relative">
+          <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+          <span class="cmd">pip install customtkinter pyautogui Pillow</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-content">
+        <h3>Launch the App</h3>
+        <p>Run the script — the GUI opens and the HTTP API server starts automatically on port 7798.</p>
+        <div class="code-block" style="position:relative">
+          <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+          <span class="cmd">python doc_highlighter.py</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-content">
+        <h3>Add Your First Highlight</h3>
+        <p>Use the GUI or send your first curl command. Focus your Google Doc, then press Start.</p>
+        <div class="code-block" style="position:relative">
+          <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+          <span class="comment"># One line = one highlight (uses default color)</span><br/>
+          <span class="cmd">curl -s -X POST http://localhost:7798/add-and-start \</span><br/>
+          <span class="cmd">&nbsp;&nbsp;-H "Content-Type: application/json" \</span><br/>
+          <span class="cmd">&nbsp;&nbsp;-d '</span><span class="str">{"text":"hello world","color":"Yellow"}</span><span class="cmd">'</span>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="install-steps reveal">
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-body">
-        <h4>Clone the repo</h4>
-        <div class="code-wrap">
-          <div class="code-block" id="cb1">git clone https://github.com/AadithKK/doc-highlighter.git
-cd doc-highlighter</div>
-          <button class="copy-btn" onclick="cp('cb1',this)">Copy</button>
-        </div>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-body">
-        <h4>Install dependencies</h4>
-        <div class="code-wrap">
-          <div class="code-block" id="cb2">pip install customtkinter pyautogui pillow</div>
-          <button class="copy-btn" onclick="cp('cb2',this)">Copy</button>
-        </div>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-body">
-        <h4>Run it</h4>
-        <div class="code-wrap">
-          <div class="code-block" id="cb3">python doc_highlighter.py</div>
-          <button class="copy-btn" onclick="cp('cb3',this)">Copy</button>
-        </div>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-num">4</div>
-      <div class="step-body">
-        <h4>Calibrate (one-time setup)</h4>
-        <p style="font-size:13px;color:var(--muted);line-height:1.65">Go to <strong style="color:var(--text)">Settings → Calibration</strong>. Open your Google Doc, click the highlight button, and use <strong style="color:var(--text)">CAPTURE</strong> to record each colour swatch position. Takes about 60 seconds total — never needed again.</p>
-      </div>
-    </div>
-  </div>
-</div>
+</section>
 
-<!-- CLAUDE -->
-<div class="section-wrap" id="claude">
-  <div class="claude-inner reveal">
-    <div>
-      <div class="section-tag">AI Integration</div>
-      <h2>Claude builds the list.<br/><span>You press Start.</span></h2>
-      <p>Ask Claude Code to extract key terms from any text, then send them straight to Doc Highlighter with a single curl command. The queue fills and highlighting begins — no copy-paste, no switching windows.</p>
-      <a class="btn-primary" href="https://github.com/AadithKK/doc-highlighter" target="_blank">Get Started</a>
+<hr class="divider"/>
+
+<!-- CLAUDE SECTION -->
+<section class="section" id="api">
+  <div class="section-label">Claude Code Integration</div>
+  <div class="section-title">Let AI Drive<br/>Your Highlights</div>
+  <div class="claude-block">
+    <div class="claude-left">
+      <span class="tag">HTTP API</span>
+      <h2>Every Action,<br/>One curl Away</h2>
+      <p>
+        Doc Highlighter ships with a built-in HTTP server. Claude Code (or any script) can add terms,
+        start the queue, check status, and clear the list — no GUI interaction required.
+      </p>
     </div>
-    <div class="code-stack">
-      <div>
-        <div class="code-label">Add one term</div>
-        <div class="code-wrap">
-          <div class="code-block" id="cb4">curl -X POST http://localhost:7798/add \
-  -d "mitochondria::Yellow"</div>
-          <button class="copy-btn" onclick="cp('cb4',this)">Copy</button>
+    <div class="claude-right">
+      <div class="endpoint-list">
+        <div class="endpoint">
+          <div class="endpoint-line">
+            <span class="method">POST</span>
+            <span class="endpoint-path">/add</span>
+          </div>
+          <div class="endpoint-desc">Add a single highlight entry to the queue</div>
         </div>
-      </div>
-      <div>
-        <div class="code-label">Batch import + start immediately</div>
-        <div class="code-wrap">
-          <div class="code-block" id="cb5">curl -X POST http://localhost:7798/batch \
-  -d "ATP synthesis::Yellow
-cell membrane::Green
-DNA replication::Blue"</div>
-          <button class="copy-btn" onclick="cp('cb5',this)">Copy</button>
+        <div class="endpoint">
+          <div class="endpoint-line">
+            <span class="method">POST</span>
+            <span class="endpoint-path">/add-and-start</span>
+          </div>
+          <div class="endpoint-desc">Add an entry and immediately start the queue</div>
         </div>
-      </div>
-      <div>
-        <div class="code-label">Add and start at once</div>
-        <div class="code-wrap">
-          <div class="code-block" id="cb6">curl -X POST http://localhost:7798/add-and-start \
-  -d "key concept::Orange"</div>
-          <button class="copy-btn" onclick="cp('cb6',this)">Copy</button>
+        <div class="endpoint">
+          <div class="endpoint-line">
+            <span class="method">POST</span>
+            <span class="endpoint-path">/batch</span>
+          </div>
+          <div class="endpoint-desc">Add multiple highlights at once (newline-separated)</div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-line">
+            <span class="method">POST</span>
+            <span class="endpoint-path">/start</span>
+          </div>
+          <div class="endpoint-desc">Start processing the current queue</div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-line">
+            <span class="method">POST</span>
+            <span class="endpoint-path">/stop</span>
+          </div>
+          <div class="endpoint-desc">Stop the queue (can be resumed)</div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-line">
+            <span class="method get">GET</span>
+            <span class="endpoint-path">/status</span>
+          </div>
+          <div class="endpoint-desc">Returns running state, queue count, current entry</div>
         </div>
       </div>
     </div>
   </div>
-</div>
+
+  <div style="margin-top:24px; border:2px solid var(--border); box-shadow:var(--shadow); background:#1e1e2e; padding:0; overflow:hidden;">
+    <div style="background:#313244; padding:8px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #45475a;">
+      <span style="font-family:var(--mono);font-size:11px;color:#cdd6f4;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Batch Example</span>
+      <button class="copy-btn" style="position:static;margin:0;" onclick="copyParent(this)">COPY</button>
+    </div>
+    <div class="code-block" style="border:none;box-shadow:none;" id="batch-example">
+<span class="comment"># Highlight multiple terms with colors in one request</span>
+<span class="cmd">curl -s -X POST http://localhost:7798/batch \</span>
+<span class="cmd">&nbsp;&nbsp;-H "Content-Type: application/json" \</span>
+<span class="cmd">&nbsp;&nbsp;-d '</span><span class="str">{"lines":"transformer architecture::Yellow\nattention mechanism::Blue\ngradient descent::Green","color":"Yellow"}</span><span class="cmd">'</span>
+    </div>
+  </div>
+</section>
 
 <!-- CTA -->
-<div class="cta reveal">
-  <h2>Stop highlighting<br/>by <span class="grad">hand.</span></h2>
-  <p>Free, open source, and built for Windows + Google Docs.</p>
-  <div class="cta-btns">
-    <a class="btn-primary" href="https://github.com/AadithKK/doc-highlighter" target="_blank">Download on GitHub</a>
-    <a class="btn-secondary" href="https://github.com/AadithKK/doc-highlighter/issues" target="_blank">Report a Bug</a>
+<div class="cta-section">
+  <h2>Start <span>Highlighting</span><br/>Right Now</h2>
+  <p>Free. Open source. No account required.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="https://github.com/AadithKK/doc-highlighter" class="btn btn-gold">Download on GitHub →</a>
+    <a href="https://github.com/AadithKK/doc-highlighter/issues" class="btn" style="background:transparent;color:var(--bg);border-color:#555;">Report an Issue</a>
   </div>
-  <p class="cta-note">Found a bug or have a feature idea? Open an issue — all feedback welcome.</p>
 </div>
 
 <!-- FOOTER -->
 <footer>
-  <a class="footer-brand" href="#">
-    <img src="Gemini_Generated_Image_s2bwlos2bwlos2bw.png" alt=""/>
+  <div class="footer-logo">
+    <img src="Gemini_Generated_Image_s2bwlos2bwlos2bw.png" alt="Doc Highlighter"/>
     Doc Highlighter
-  </a>
-  <div class="footer-r">
-    Open source &nbsp;·&nbsp;
-    <a href="https://github.com/AadithKK/doc-highlighter" target="_blank">GitHub</a>
-    &nbsp;·&nbsp; Windows only &nbsp;·&nbsp; Free forever
   </div>
+  <div class="footer-links">
+    <a href="https://github.com/AadithKK/doc-highlighter">GitHub</a>
+    <a href="https://github.com/AadithKK/doc-highlighter/issues">Issues</a>
+    <a href="#install">Docs</a>
+  </div>
+  <div class="footer-copy">Built by AadithKK</div>
 </footer>
 
 <script>
-// ── Stat counters ────────────────────────────────────────────────────────────
-document.querySelectorAll('.stat-num[data-target]').forEach(el => {
-  const target = +el.dataset.target;
-  const dur = 1400;
-  function tick(now, start) {
-    const p = Math.min((now - start) / dur, 1);
-    const ease = 1 - Math.pow(1 - p, 3);
-    el.textContent = Math.round(ease * target);
-    if (p < 1) requestAnimationFrame(n => tick(n, start));
-  }
-  const obs = new IntersectionObserver(e => {
-    if (e[0].isIntersecting) { obs.disconnect(); requestAnimationFrame(n => tick(n, n)); }
-  }, { threshold: .5 });
-  obs.observe(el);
-});
-
-// ── Live demo ────────────────────────────────────────────────────────────────
-const DEMO_ENTRIES = [
-  { text: 'mitochondria',    color: 'Yellow',  hex: '#FFFF00', line: 0 },
-  { text: 'cell membrane',   color: 'Green',   hex: '#00FF00', line: 2 },
-  { text: 'DNA replication', color: 'Blue',    hex: '#6fa8dc', line: 4 },
-  { text: 'ATP synthesis',   color: 'Orange',  hex: '#FFB347', line: 1 },
-  { text: 'protein folding', color: 'Purple',  hex: '#c27ba0', line: 6 },
-  { text: 'osmosis',         color: 'Teal',    hex: '#76d7c4', line: 3 },
-];
-
-const queueEl  = document.getElementById('demo-queue');
-const progEl   = document.getElementById('demo-prog');
-const statEl   = document.getElementById('demo-stat');
-const statusEl = document.getElementById('demo-status');
-const docLines = document.querySelectorAll('.doc-line');
-let running = false;
-
-function resetDemo() {
-  queueEl.innerHTML = '';
-  progEl.style.width = '0%';
-  statEl.textContent = 'Idle';
-  statusEl.textContent = 'Ready';
-  docLines.forEach(l => {
-    l.style.background = 'rgba(90,122,154,.15)';
-    l.style.transition = '';
-  });
-}
-
-function addQueueRow(e, active) {
-  const row = document.createElement('div');
-  row.className = 'dq-row';
-  row.innerHTML =
-    `<div class="dq-dot" style="background:${e.hex}"></div>` +
-    `<span class="dq-tag">[${e.color}]</span>` +
-    `<span class="dq-text">${e.text}</span>`;
-  if (active) row.style.borderColor = e.hex + '60';
-  queueEl.appendChild(row);
-  requestAnimationFrame(() => row.classList.add('visible'));
-  return row;
-}
-
-async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-async function runDemo() {
-  if (running) return;
-  running = true;
-  resetDemo();
-
-  // Phase 1: fill queue
-  statusEl.textContent = 'Building queue…';
-  for (const e of DEMO_ENTRIES) {
-    addQueueRow(e, false);
-    await sleep(260);
+  function copyCode(btn) {
+    const block = btn.closest('.code-block, .step-content');
+    const codeEl = block.querySelector('.code-block') || block;
+    const text = codeEl.innerText.replace('COPY\n', '').trim();
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'DONE!';
+      btn.style.background = '#a6e3a1';
+      setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 1500);
+    });
   }
 
-  await sleep(600);
-
-  // Phase 2: run automation
-  statusEl.textContent = 'Highlighting…';
-  const rows = queueEl.querySelectorAll('.dq-row');
-  for (let i = 0; i < DEMO_ENTRIES.length; i++) {
-    const e = DEMO_ENTRIES[i];
-    rows[i].style.borderColor = e.hex + '80';
-    rows[i].style.background  = 'rgba(10,21,32,.9)';
-    statEl.textContent = `${i + 1} / ${DEMO_ENTRIES.length}`;
-    progEl.style.width = ((i + 1) / DEMO_ENTRIES.length * 100) + '%';
-    statusEl.textContent = `[${i+1}/${DEMO_ENTRIES.length}] "${e.text}"`;
-
-    const line = docLines[e.line];
-    if (line) {
-      line.style.transition = 'background .5s ease';
-      line.style.background = e.hex + 'cc';
-    }
-
-    rows[i].style.opacity = '0.45';
-    await sleep(700);
+  function copyParent(btn) {
+    const block = btn.closest('div').nextElementSibling;
+    const text = block.innerText.trim();
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'DONE!';
+      btn.style.background = '#a6e3a1';
+      setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 1500);
+    });
   }
-
-  statusEl.textContent = 'Complete ✓';
-  statEl.textContent = 'Done ✓';
-
-  await sleep(3200);
-  running = false;
-  runDemo();
-}
-
-// Start when visible
-const demoObs = new IntersectionObserver(e => {
-  if (e[0].isIntersecting) { demoObs.disconnect(); runDemo(); }
-}, { threshold: .3 });
-demoObs.observe(document.querySelector('.demo-section'));
-
-// ── Scroll reveal ────────────────────────────────────────────────────────────
-const revObs = new IntersectionObserver(e => e.forEach(x => {
-  if (x.isIntersecting) { x.target.classList.add('on'); revObs.unobserve(x.target); }
-}), { threshold: .08 });
-document.querySelectorAll('.reveal').forEach(el => revObs.observe(el));
-
-// ── Copy buttons ─────────────────────────────────────────────────────────────
-function cp(id, btn) {
-  navigator.clipboard.writeText(document.getElementById(id).innerText).then(() => {
-    btn.textContent = 'Copied!'; btn.classList.add('ok');
-    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1800);
-  });
-}
 </script>
+
 </body>
 </html>
